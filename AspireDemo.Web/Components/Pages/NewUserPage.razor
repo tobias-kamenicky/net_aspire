@@ -1,0 +1,47 @@
+@page "/users/new"
+@using AspireDemo.Core.User
+@using System.ComponentModel.DataAnnotations
+
+@attribute [OutputCache(Duration = 5)]
+
+@inject UserClient UserApi
+@inject NavigationManager Navigation
+
+<PageTitle>Create user</PageTitle>
+
+<h1>Create user</h1>
+
+<EditForm Model="Model" OnValidSubmit="Submit" FormName="CreateUser_Form">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText class="form-control" @bind-Value="Model!.Name"></InputText>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="Model!.Email"></InputText>
+    </div>
+    <button class="btn btn-primary" type="submit">Create</button>
+</EditForm>
+
+
+@code {
+    [SupplyParameterFromForm] public NewUser? Model { get; set; }
+
+    protected override void OnInitialized() => Model ??= new();
+
+    private async Task Submit()
+    {
+        await UserApi.CreateUserAsync(new(Model!.Name, Model!.Email));
+        Navigation.NavigateTo("/users", true);
+    }
+
+    public class NewUser
+    {
+        [Required] [StringLength(64)] public string Name { get; set; }
+
+        [Required] [EmailAddress] public string Email { get; set; }
+    }
+
+}

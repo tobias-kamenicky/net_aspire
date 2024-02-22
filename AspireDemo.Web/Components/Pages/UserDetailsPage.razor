@@ -1,0 +1,109 @@
+@page "/users/{userId:guid}"
+@using AspireDemo.Core.User
+@using System.ComponentModel.DataAnnotations
+@using AspireDemo.Web.Hubs
+@using Microsoft.AspNetCore.SignalR.Client
+
+@attribute [OutputCache(Duration = 5)]
+
+@inject UserClient UserApi
+@inject NavigationManager Navigation
+
+@if (_user == null)
+{
+    <PageTitle>User details</PageTitle>
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <PageTitle>@_user.Name</PageTitle>
+
+    if (!_editingName)
+    {
+        <div style="display: flex">
+            <h1>@_user.Name</h1>
+            @if (!_user.Enabled)
+            {
+                <h1 style="margin-left: 8px;color: #444444">(Inactive)</h1>
+            }
+            <button type="button" class="btn btn-outline-primary" style="align-self: center; margin-left: 12px" @onclick="() => _editingName = true">Edit</button>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="Model" OnValidSubmit="Submit" FormName="CreateUser_Form">
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <InputText class="form-control" @bind-Value="Model!.Name"></InputText>
+            </div>
+            <button class="btn btn-primary" type="submit">Update</button>
+        </EditForm>
+    }
+
+    <div class="mb-3">
+        <label style="font-weight: bold">Email: </label>
+        <span style="margin-left: 12px">@_user.Email</span>
+    </div>
+    @if (_user.Enabled)
+    {
+        <button class="btn btn-danger" type="button" @onclick="DisableUser">Disable</button>
+    }
+}
+
+@code {
+    [Parameter] public Guid UserId { get; set; }
+
+
+    private bool _editingName;
+
+    public UpdateNameModel? Model { get; set; }
+
+    private UserDetails? _user;
+    private HubConnection? _hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchUser();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/hubs/events"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<ExternalEvents.UserUpdated>(nameof(IExternalEventsClient.ReceiveEvent), e =>
+        {
+            Console.WriteLine($"Received event {e}");
+            InvokeAsync(FetchUser);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task FetchUser()
+    {
+        _user = await UserApi.GetUserDetailsAsync(UserId);
+        Model = new() {Name = _user!.Name};
+        StateHasChanged();
+    }
+
+    private async Task Submit()
+    {
+        await UserApi.RenameUserAsync(new(_user!.Id, Model!.Name));
+        _editingName = false;
+    }
+
+    private async Task DisableUser()
+    {
+        await UserApi.DisableUserAsync(new(_user!.Id));
+    }
+
+    public class UpdateNameModel
+    {
+        [Required] public string Name { get; set; } = string.Empty;
+    }
+
+}

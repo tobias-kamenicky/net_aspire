@@ -1,0 +1,85 @@
+﻿@page "/"
+@page "/users"
+@using AspireDemo.Core.User
+@using AspireDemo.Web.Hubs
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+@attribute [StreamRendering]
+@attribute [OutputCache(Duration = 5)]
+
+@inject NavigationManager Navigation
+@inject UserClient UserApi
+
+<PageTitle>Users</PageTitle>
+
+<h1>Users</h1>
+
+@if (_users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Enabled</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in _users)
+            {
+                <tr role="button" @onclick="() => GoToUserDetails(user.Id)">
+                    <td>@user.Name</td>
+                    <td>@user.Enabled</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-primary" @onclick="GoToCreateUser">Create new</button>
+}
+
+@code {
+    private List<UserListItem>? _users;
+    private HubConnection? _hubConnection;
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshUsers();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/hubs/events"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<ExternalEvents.UserUpdated>(nameof(IExternalEventsClient.ReceiveEvent), e =>
+        {
+            Console.WriteLine($"Received event {e}");
+            InvokeAsync(RefreshUsers);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task RefreshUsers()
+    {
+        _users = [];
+        await foreach(var user in UserApi.ListUsersAsync())
+        {
+            _users.Add(user);
+            StateHasChanged();
+        }
+    }
+
+    private void GoToCreateUser() => Navigation.NavigateTo("/users/new", true);
+    private void GoToUserDetails(Guid id) => Navigation.NavigateTo($"users/{id}", true);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}
