@@ -6,15 +6,11 @@ namespace AspireDemo.ApiService.Domain.Users;
 
 public class UserHandlers(IEventStore eventStore, IUserProjectionRepository userRepository) : IWolverineHandler
 {
-    public async Task<Result<Guid>> HandleAsync(CreateUser command, CancellationToken cancellationToken = default)
+    public async Task<Result> HandleAsync(CreateUser command, CancellationToken cancellationToken = default)
     {
         var result = User.Create(command.Name, command.Email);
 
-        return await result.IfOk(async user =>
-        {
-            await eventStore.SaveChanges(user, cancellationToken);
-            return user.Id;
-        });
+        return await result.IfOk(user => eventStore.SaveChanges(user, cancellationToken));
     }
 
     public async Task<Result> HandleAsync(RenameUser command, CancellationToken cancellationToken = default)
