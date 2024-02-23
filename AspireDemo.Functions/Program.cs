@@ -3,6 +3,8 @@ using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Host.UseWolverine(x =>
 {
     x.ListenToRabbitQueue("external-events-functions-queue").UseForReplies();
@@ -14,6 +16,6 @@ builder.Host.UseWolverine(x =>
 
 var app = builder.Build();
 
-await Task.Delay(TimeSpan.FromSeconds(5));
+await Task.Delay(TimeSpan.FromSeconds(2));
 
 await app.RunAsync();

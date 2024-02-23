@@ -72,6 +72,7 @@ app.MapGroup("/api/users").MapUserApi();
 
 app.MapDefaultEndpoints();
 
+await Task.Delay(TimeSpan.FromSeconds(2));
 await app.RunAsync();
 
 internal static class UserApi

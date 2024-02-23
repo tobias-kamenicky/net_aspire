@@ -54,4 +54,5 @@ app.MapHub<ExternalEventsHub>("/hubs/events");
 
 app.MapDefaultEndpoints();
 
+await Task.Delay(TimeSpan.FromSeconds(2));
 await app.RunAsync();
